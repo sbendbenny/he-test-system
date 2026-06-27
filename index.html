@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公司活動報名系統</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            padding: 50px 20px;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 { text-align: center; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>活動報名表單</h2>
+    <form id="regForm">
+        <div class="form-group">
+            <label for="name">員工姓名：</label>
+            <input type="text" id="name" required placeholder="請輸入全名">
+        </div>
+        
+        <div class="form-group">
+            <label for="dept">所屬部門：</label>
+            <select id="dept" required>
+                <option value="">請選擇部門</option>
+                <option value="行政部">行政部</option>
+                <option value="資訊部">資訊部</option>
+                <option value="業務部">業務部</option>
+                <option value="人資部">人資部</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="veg">是否素食：</label>
+            <select id="veg" required>
+                <option value="否">否 (葷食)</option>
+                <option value="是">是 (素食)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="photo">上傳員工證照片：</label>
+            <input type="file" id="photo" accept="image/*" required>
+        </div>
+
+        <button type="submit" id="submitBtn">送出報名</button>
+    </form>
+</div>
+
+<script>
+    // ⚠️【重要步驟】請將下方的網址替換成您部署 Google Apps Script 後取得的「網頁應用程式 URL」
+    const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbz3FZ1yttc3asKx_ckWhDhsZJydjuNUt2118Hj9NCJwZ6kVY7J5_MTOBL7QOc6d4BAdBA/exec";
+
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "資料與照片上傳中，請稍候...";
+
+        const name = document.getElementById('name').value;
+        const dept = document.getElementById('dept').value;
+        const veg = document.getElementById('veg').value;
+        const fileInput = document.getElementById('photo');
+        const file = fileInput.files[0];
+
+        // 讀取圖片並轉換為 Base64 格式以利傳輸
+        const reader = new FileReader();
+        reader.onload = async function() {
+            // 擷取 Base64 的純資料部分
+            const base64Data = reader.result.split(',')[1]; 
+            
+            // 準備傳遞給後端的資料包 (JSON格式)
+            const payload = {
+                name: name,
+                dept: dept,
+                veg: veg,
+                filename: file.name,
+                mimeType: file.type,
+                fileData: base64Data
+            };
+
+            try {
+                // 發送 POST 請求到 Google Apps Script
+                const response = await fetch(GOOGLE_SHEET_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload) // fetch 預設 content-type 為 text/plain，可避免跨域預檢報錯
+                });
+                
+                const result = await response.json();
+                
+                if(result.status === "success") {
+                    alert("報名成功！資料已儲存。");
+                    document.getElementById('regForm').reset(); // 清空表單
+                } else {
+                    alert("發生錯誤：" + result.message);
+                }
+            } catch (error) {
+                alert("網路連線錯誤，請重試：" + error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "送出報名";
+            }
+        };
+        
+        // 觸發讀取檔案
+        reader.readAsDataURL(file);
+    });
+</script>
+
+</body>
+</html>
